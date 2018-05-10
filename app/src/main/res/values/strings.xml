@@ -1,3 +1,6 @@
 <resources>
-    <string name="app_name">NewHMSoftBluetooth</string>
+    <string name="app_name">Cortisol Sensing</string>
+    <string name="label_current">Current</string>
+    <string name="default_data_val">No data</string>
+    <string name="label_qr_start">QR Code</string>
 </resources>

@@ -18,7 +18,6 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.SystemClock;
-import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -36,6 +35,12 @@ import java.util.List;
 import java.util.UUID;
 
 //TODO: Implement the Bluetooth code here
+/*
+ *TODO:
+ *  Display an empty plot
+ *  Add a splash screen
+ *  read + display current
+ */
 
 public class MainActivity extends AppCompatActivity {
     private final String TAG = ".MainActivity";
@@ -43,7 +48,7 @@ public class MainActivity extends AppCompatActivity {
     //Information about the board
     //Change these if the device's address or service/characteristic UUIDs change
     public static String HMSoftAddress = "F0:C7:7F:94:CF:97";
-    public static final String HMSoftServ = "0000ffe0-0000-1000-8000-00805f9b34fb";
+    public static final String HMSoftServ = "0000ffe0-0000-1000-8000-00805f9b34fb"; //Should be same amongst HM-11 Modules
     public  static final String HMSoftChar = "0000ffe1-0000-1000-8000-00805f9b34fb";
 
     //Text View
@@ -57,10 +62,9 @@ public class MainActivity extends AppCompatActivity {
 
     //Needed for Bluetooth
     private int count; //Prevent from scanning forever
-    //private boolean readyTo;
-    private boolean foundChar;
+    private boolean foundChar; //Flag for finding BT Characteristic
     private BluetoothAdapter mBluetoothAdapter;
-    private boolean mScanning;
+    private boolean mScanning; //Flag for scanning for devices
     private Handler mHandler;
 
     private ArrayList<String> deviceList; //Holds number of lists
@@ -86,26 +90,63 @@ public class MainActivity extends AppCompatActivity {
         isRecording = false;
 
         //Bluetooth and writing feature checking
-        // Use this check to determine whether BLE is supported on the device.  Then you can
-        // selectively disable BLE-related features.
-        if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
-            Toast.makeText(this, "Bluetooth not supported!", Toast.LENGTH_SHORT).show();
-            finish();
-        }
-        // Initializes a Bluetooth adapter.  For API level 18 and above, get a reference to
-        // BluetoothAdapter through BluetoothManager.
-        final BluetoothManager bluetoothManager =
-                (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
-        mBluetoothAdapter = bluetoothManager.getAdapter();
-
-        // Checks if Bluetooth is supported on the device.
-        if (mBluetoothAdapter == null) {
-            Toast.makeText(this, "Bluetooth not supported!", Toast.LENGTH_SHORT).show();
-            finish();
-            return;
-        }
+        checkBTSupportedAvailable();
         checkBTAndWritePermissions();
+
         //Setup the address reading
+        handleSettingsRead();
+
+        //TODO: Setup graphview
+    }
+
+    @Override
+    protected void onResume(){
+        super.onResume();
+
+        // Ensures Bluetooth is enabled on the device.  If Bluetooth is not currently enabled,
+        // fire an intent to display a dialog asking the user to grant permission to enable it.
+        if (!mBluetoothAdapter.isEnabled() && !foundChar) {
+            if (!mBluetoothAdapter.isEnabled()) {
+                Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
+            }
+        }
+
+        //Start scanning for devices if no device is connected
+        if(!foundChar && BluetoothApp.getApplication().getService()==null)
+            scanLeDevice(true);
+        else{ //Otherwise retrive bluetooth service from BluetoothApp
+            foundChar= true; //No need to scan again
+            checkIfCharacteristic(BluetoothApp.getApplication().getService().getSupportedGattServices());
+            //If restarted, bypass scanning
+            if(BluetoothApp.getApplication().getService()!=null && mBluetoothLeService==null) {
+                bluetoothGattCharacteristicHM_SOFT = BluetoothApp.getApplication().getGattCharacteristic();
+                mBluetoothLeService = BluetoothApp.getApplication().getService();
+                Log.i(TAG,"mBluetoothLeService has been set, null?: " + (mBluetoothLeService==null));
+            }
+            registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter());
+            if (mBluetoothLeService != null) {
+                final boolean result = mBluetoothLeService.connect(HMSoftAddress);
+                Log.d(TAG, "Connect request result=" + result);
+            }
+        }
+    }
+
+    @Override
+    protected void onDestroy(){
+        super.onDestroy();
+        if(outStream != null) {
+            try {
+                outStream.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public void handleSettingsRead(){
+        if(!isExternalStorageWritable())
+            return; //Can't read
         File readDir = new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/HMSOFTCORTISOL/SETTINGS");
         if(!readDir.exists())
             readDir.mkdir();
@@ -144,51 +185,27 @@ public class MainActivity extends AppCompatActivity {
                 e.printStackTrace();
             }
         }
-        //Setup other stuff TODO
     }
 
-    @Override
-    protected void onResume(){
-        super.onResume();
-
-        // Ensures Bluetooth is enabled on the device.  If Bluetooth is not currently enabled,
-        // fire an intent to display a dialog asking the user to grant permission to enable it.
-        if (!mBluetoothAdapter.isEnabled() && !foundChar) {
-            if (!mBluetoothAdapter.isEnabled()) {
-                Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-                startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
-            }
+    //Check bluetooth functionality, turns off app if not
+    public void checkBTSupportedAvailable(){
+        // Use this check to determine whether BLE is supported on the device.  Then you can
+        // selectively disable BLE-related features.
+        if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
+            Toast.makeText(this, "Bluetooth not supported!", Toast.LENGTH_SHORT).show();
+            finish();
         }
-        //Start scanning for devices
-        if(!foundChar && BluetoothApp.getApplication().getService()==null) //already stored BluetoothLeService
-            scanLeDevice(true);
+        // Initializes a Bluetooth adapter.  For API level 18 and above, get a reference to
+        // BluetoothAdapter through BluetoothManager.
+        final BluetoothManager bluetoothManager =
+                (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
+        mBluetoothAdapter = bluetoothManager.getAdapter();
 
-        if(foundChar || BluetoothApp.getApplication().getService()!=null){
-            foundChar= true; //No need to scan again
-            checkIfCharacteristic(BluetoothApp.getApplication().getService().getSupportedGattServices());
-            //If restarted, bypass scanning
-            if(BluetoothApp.getApplication().getService()!=null && mBluetoothLeService==null) {
-                bluetoothGattCharacteristicHM_SOFT = BluetoothApp.getApplication().getGattCharacteristic();
-                mBluetoothLeService = BluetoothApp.getApplication().getService();
-                Log.i(TAG,"mBluetoothLeService has been set, null?: " + (mBluetoothLeService==null));
-            }
-            registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter());
-            if (mBluetoothLeService != null) {
-                final boolean result = mBluetoothLeService.connect(HMSoftAddress);
-                Log.d(TAG, "Connect request result=" + result);
-            }
-        }
-    }
-
-    @Override
-    protected void onDestroy(){
-        super.onDestroy();
-        if(outStream != null) {
-            try {
-                outStream.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+        // Checks if Bluetooth is supported on the device.
+        if (mBluetoothAdapter == null) {
+            Toast.makeText(this, "Bluetooth not supported!", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
         }
     }
 
