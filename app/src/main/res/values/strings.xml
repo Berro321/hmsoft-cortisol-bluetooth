@@ -1,6 +1,11 @@
 <resources>
+    <!-- Splash Screen strings-->
+    <string name="splash_header">Presented By</string>
+
+    <!-- Main Activity strings-->
     <string name="app_name">Cortisol Sensing</string>
     <string name="label_current">Current</string>
+    <string name="label_cortisol">Cortisol Concentration</string>
     <string name="default_data_val">No data</string>
     <string name="label_qr_start">QR Code</string>
 </resources>

@@ -9,6 +9,7 @@ import android.view.View;
 
 /**
  * Original code by Francisco Ramirez
+ * Contributors: Betto Cerrillos
  */
 
 public class SplashScreen extends AppCompatActivity{

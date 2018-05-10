@@ -12,15 +12,15 @@
         android:layout_height="wrap_content"
         android:text="@string/label_current"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintHorizontal_bias="0.801"
+        app:layout_constraintHorizontal_bias="0.792"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.67" />
+        app:layout_constraintVertical_bias="0.65" />
 
     <TextView
         android:id="@+id/current_display"
-        android:layout_width="115dp"
+        android:layout_width="123dp"
         android:layout_height="34dp"
         android:background="@color/Gray"
         android:text="@string/default_data_val"
@@ -28,11 +28,11 @@
         android:textColor="@color/White"
         android:textSize="24sp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintHorizontal_bias="0.884"
+        app:layout_constraintHorizontal_bias="0.877"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.758" />
+        app:layout_constraintVertical_bias="0.727" />
 
     <TextView
         android:id="@+id/concentration_display"
@@ -44,11 +44,11 @@
         android:textColor="@color/White"
         android:textSize="24sp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintHorizontal_bias="0.18"
+        app:layout_constraintHorizontal_bias="0.176"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.706" />
+        app:layout_constraintVertical_bias="0.725" />
 
     <com.jjoe64.graphview.GraphView
         android:id="@+id/concentration_graph"
@@ -60,27 +60,27 @@
 
     <Button
         android:id="@+id/plus_button"
-        android:layout_width="67dp"
-        android:layout_height="55dp"
+        android:layout_width="84dp"
+        android:layout_height="69dp"
         android:text="Plus"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintHorizontal_bias="0.949"
+        app:layout_constraintHorizontal_bias="0.976"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.901" />
+        app:layout_constraintVertical_bias="0.861" />
 
     <Button
         android:id="@+id/minus_button"
-        android:layout_width="67dp"
-        android:layout_height="wrap_content"
+        android:layout_width="84dp"
+        android:layout_height="69dp"
         android:text="Minus"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintHorizontal_bias="0.643"
+        app:layout_constraintHorizontal_bias="0.66"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.901" />
+        app:layout_constraintVertical_bias="0.861" />
 
     <Button
         android:id="@+id/qr_activate_button"
@@ -88,9 +88,21 @@
         android:layout_height="54dp"
         android:text="@string/label_qr_start"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintHorizontal_bias="0.098"
+        app:layout_constraintHorizontal_bias="0.191"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.932" />
+        app:layout_constraintVertical_bias="0.866" />
+
+    <TextView
+        android:id="@+id/view_label_cortisol_concentration"
+        android:layout_width="141dp"
+        android:layout_height="wrap_content"
+        android:text="@string/label_cortisol"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintHorizontal_bias="0.15"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.65" />
 </android.support.constraint.ConstraintLayout>

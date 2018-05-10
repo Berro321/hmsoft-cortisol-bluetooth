@@ -13,6 +13,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Environment;
 import android.os.Handler;
@@ -23,7 +24,10 @@ import android.os.Bundle;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.jjoe64.graphview.GraphView;
+import com.jjoe64.graphview.Viewport;
 import com.jjoe64.graphview.series.DataPoint;
+import com.jjoe64.graphview.series.LineGraphSeries;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -58,8 +62,6 @@ public class MainActivity extends AppCompatActivity {
     private File outFile;
     private FileOutputStream outStream;
 
-    //Reading from settings
-
     //Needed for Bluetooth
     private int count; //Prevent from scanning forever
     private boolean foundChar; //Flag for finding BT Characteristic
@@ -79,6 +81,12 @@ public class MainActivity extends AppCompatActivity {
     private BluetoothGattCharacteristic mNotifyCharacteristic;
     private BluetoothGattCharacteristic bluetoothGattCharacteristicHM_SOFT;
 
+    //Graphview variables
+    private LineGraphSeries<DataPoint> series;
+    private GraphView graph;
+    private Boolean isGraphing;
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -96,7 +104,27 @@ public class MainActivity extends AppCompatActivity {
         //Setup the address reading
         handleSettingsRead();
 
-        //TODO: Setup graphview
+        //Setup graphview
+        graph = findViewById(R.id.concentration_graph);
+        series = new LineGraphSeries<DataPoint>(); //Create a new series of points to graph
+        series.setColor(Color.WHITE);
+        graph.addSeries(series);
+        graph.getGridLabelRenderer().setHorizontalAxisTitle("Time (s)");
+        graph.getGridLabelRenderer().setVerticalAxisTitle("Concentration");
+        graph.getGridLabelRenderer().setLabelHorizontalHeight(20);
+        graph.getGridLabelRenderer().setLabelVerticalWidth(30);
+        graph.getGridLabelRenderer().setLabelsSpace(3);
+        graph.getGridLabelRenderer().setNumVerticalLabels(4);
+        Viewport viewport = graph.getViewport();
+        viewport.setScrollable(true);
+        viewport.setYAxisBoundsManual(true);
+        viewport.setMinY(.01);
+        viewport.setMaxY(1.5);
+        viewport.setXAxisBoundsManual(true);
+        viewport.setMaxX(10);
+        viewport.setMinX(0);
+
+        isGraphing = false;
     }
 
     @Override
@@ -332,6 +360,7 @@ public class MainActivity extends AppCompatActivity {
                         e.printStackTrace();
                     }
                 }
+
                 //TODO: Write the fft in a new column in the same file
                 if(returnedVal.equals("resUnfiltered FFT, resFiltered FFT")){}
                 //Write to the output file
@@ -340,6 +369,8 @@ public class MainActivity extends AppCompatActivity {
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
+
+                //TODO: Plot the points received on the graph (Double check)
             }
         }
     };
