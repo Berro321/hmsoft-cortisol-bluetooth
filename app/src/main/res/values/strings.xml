@@ -8,4 +8,6 @@
     <string name="label_cortisol">Cortisol Concentration</string>
     <string name="default_data_val">No data</string>
     <string name="label_qr_start">QR Code</string>
+    <string name ="label_impedance">Impedance(Ω)</string>
+    <string name ="label_voltage">Voltage(V)</string>
 </resources>

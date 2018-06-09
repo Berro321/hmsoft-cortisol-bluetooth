@@ -7,19 +7,19 @@
     tools:context="com.example.matchburn.newhmsoftbluetooth.MainActivity">
 
     <TextView
-        android:id="@+id/view_label_current"
+        android:id="@+id/view_label_voltage"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/label_current"
+        android:text="@string/label_voltage"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintHorizontal_bias="0.792"
+        app:layout_constraintHorizontal_bias="0.782"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.65" />
+        app:layout_constraintVertical_bias="0.792" />
 
     <TextView
-        android:id="@+id/current_display"
+        android:id="@+id/display_voltage"
         android:layout_width="123dp"
         android:layout_height="34dp"
         android:background="@color/Gray"
@@ -28,14 +28,14 @@
         android:textColor="@color/White"
         android:textSize="24sp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintHorizontal_bias="0.877"
+        app:layout_constraintHorizontal_bias="0.881"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.727" />
+        app:layout_constraintVertical_bias="0.897" />
 
     <TextView
-        android:id="@+id/concentration_display"
+        android:id="@+id/display_impedance"
         android:layout_width="123dp"
         android:layout_height="34dp"
         android:background="@color/Gray"
@@ -48,41 +48,33 @@
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.725" />
+        app:layout_constraintVertical_bias="0.897" />
 
     <com.jjoe64.graphview.GraphView
-        android:id="@+id/concentration_graph"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_marginBottom="200dp"
-        android:layout_marginLeft="20dp"
-        android:layout_marginRight="20dp"/>
-
-    <Button
-        android:id="@+id/plus_button"
-        android:layout_width="84dp"
-        android:layout_height="69dp"
-        android:text="Plus"
+        android:id="@+id/output_voltage_graph"
+        android:layout_width="323dp"
+        android:layout_height="152dp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintHorizontal_bias="0.976"
+        app:layout_constraintHorizontal_bias="0.262"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.861" />
+        app:layout_constraintVertical_bias="0.571" />
 
-    <Button
-        android:id="@+id/minus_button"
-        android:layout_width="84dp"
-        android:layout_height="69dp"
-        android:text="Minus"
+    <com.jjoe64.graphview.GraphView
+        android:id="@+id/impedance_graph"
+        android:layout_width="323dp"
+        android:layout_height="165dp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintHorizontal_bias="0.66"
+        app:layout_constraintHorizontal_bias="0.262"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.861" />
+        app:layout_constraintVertical_bias="0.046" /><![CDATA[
 
-    <Button
+
+
+    Button
         android:id="@+id/qr_activate_button"
         android:layout_width="91dp"
         android:layout_height="54dp"
@@ -94,15 +86,20 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.866" />
 
+
+
+    ]]>
+
     <TextView
         android:id="@+id/view_label_cortisol_concentration"
         android:layout_width="141dp"
         android:layout_height="wrap_content"
-        android:text="@string/label_cortisol"
+        android:text="@string/label_impedance"
+        android:textAlignment="center"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintHorizontal_bias="0.15"
+        app:layout_constraintHorizontal_bias="0.16"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.65" />
+        app:layout_constraintVertical_bias="0.792" />
 </android.support.constraint.ConstraintLayout>

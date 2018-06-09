@@ -14,6 +14,7 @@ import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.graphics.Paint;
 import android.os.Build;
 import android.os.Environment;
 import android.os.Handler;
@@ -22,9 +23,12 @@ import android.os.SystemClock;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.jjoe64.graphview.GraphView;
+import com.jjoe64.graphview.GridLabelRenderer;
 import com.jjoe64.graphview.Viewport;
 import com.jjoe64.graphview.series.DataPoint;
 import com.jjoe64.graphview.series.LineGraphSeries;
@@ -48,6 +52,9 @@ import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity {
     private final String TAG = ".MainActivity";
+    private final String recordTitle = "valIn, valOutUnfiltered, resistanceUnfiltered, valOutFiltered, resistanceFiltered, Frequency Applied, Expected\n";
+    private final String recordFFTTitle = "resUnfiltered FFT, resFiltered FFT\n";
+    private final Boolean DEBUG_MODE = false; //For testing various things
 
     //Information about the board
     //Change these if the device's address or service/characteristic UUIDs change
@@ -56,10 +63,15 @@ public class MainActivity extends AppCompatActivity {
     public  static final String HMSoftChar = "0000ffe1-0000-1000-8000-00805f9b34fb";
 
     //Text View
+    private TextView voltage_display;
+    private TextView impedance_display;
 
     //Writing to board
     private boolean isRecording;
+    private boolean flagFFTRecording; //Flag to indicate when the fft data is recording
+    private boolean flagIgnoreTitle; //Flag for ignoring the title of the data when recording
     private File outFile;
+    private File outFile_fft;
     private FileOutputStream outStream;
 
     //Needed for Bluetooth
@@ -83,9 +95,14 @@ public class MainActivity extends AppCompatActivity {
 
     //Graphview variables
     private LineGraphSeries<DataPoint> series;
+    private LineGraphSeries<DataPoint> series_voltage;
     private GraphView graph;
+    private GraphView voltage_graph;
     private Boolean isGraphing;
 
+    //Debug mode specific
+    //private FileInputStream graph_in;
+    private FileOutputStream graph_raw_out;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -96,6 +113,7 @@ public class MainActivity extends AppCompatActivity {
         mHandler = new Handler();
         foundChar = false;
         isRecording = false;
+        flagIgnoreTitle = false;
 
         //Bluetooth and writing feature checking
         checkBTSupportedAvailable();
@@ -105,26 +123,63 @@ public class MainActivity extends AppCompatActivity {
         handleSettingsRead();
 
         //Setup graphview
-        graph = findViewById(R.id.concentration_graph);
+        graph = findViewById(R.id.impedance_graph);
         series = new LineGraphSeries<DataPoint>(); //Create a new series of points to graph
-        series.setColor(Color.WHITE);
+        series.setColor(Color.DKGRAY);
         graph.addSeries(series);
+        graph.setTitle("Impedance(Ω)");
         graph.getGridLabelRenderer().setHorizontalAxisTitle("Time (s)");
-        graph.getGridLabelRenderer().setVerticalAxisTitle("Concentration");
-        graph.getGridLabelRenderer().setLabelHorizontalHeight(20);
-        graph.getGridLabelRenderer().setLabelVerticalWidth(30);
+        //graph.getGridLabelRenderer().setVerticalAxisTitle("Impedance (Ohm)");
+        graph.getGridLabelRenderer().setVerticalLabelsAlign(Paint.Align.RIGHT);
+        graph.getGridLabelRenderer().setLabelHorizontalHeight(50);
+        graph.getGridLabelRenderer().setLabelVerticalWidth(120);
         graph.getGridLabelRenderer().setLabelsSpace(3);
-        graph.getGridLabelRenderer().setNumVerticalLabels(4);
+        graph.getGridLabelRenderer().setNumVerticalLabels(3);
         Viewport viewport = graph.getViewport();
         viewport.setScrollable(true);
         viewport.setYAxisBoundsManual(true);
-        viewport.setMinY(.01);
-        viewport.setMaxY(1.5);
+        viewport.setMinY(0);
+        viewport.setMaxY(10000);
         viewport.setXAxisBoundsManual(true);
         viewport.setMaxX(10);
         viewport.setMinX(0);
 
+        voltage_graph = findViewById(R.id.output_voltage_graph);
+        series_voltage = new LineGraphSeries<DataPoint>(); //Create a new series of points to graph
+        series_voltage.setColor(Color.DKGRAY);
+        voltage_graph.addSeries(series_voltage);
+        voltage_graph.setTitle("Voltage (V)");
+        voltage_graph.getGridLabelRenderer().setHorizontalAxisTitle("Time (s)");
+        voltage_graph.getGridLabelRenderer().setVerticalLabelsAlign(Paint.Align.RIGHT);
+        //voltage_graph.getGridLabelRenderer().setVerticalAxisTitle("Voltage (V)");
+        voltage_graph.getGridLabelRenderer().setLabelHorizontalHeight(50);
+        voltage_graph.getGridLabelRenderer().setLabelVerticalWidth(120);
+        voltage_graph.getGridLabelRenderer().setLabelsSpace(3);
+        voltage_graph.getGridLabelRenderer().setNumVerticalLabels(4);
+        Viewport viewport1 = voltage_graph.getViewport();
+        viewport1.setScrollable(true);
+        viewport1.setYAxisBoundsManual(true);
+        viewport1.setMinY(0);
+        viewport1.setMaxY(30);
+        viewport1.setXAxisBoundsManual(true);
+        viewport1.setMaxX(10);
+        viewport1.setMinX(0);
+
         isGraphing = false;
+
+        //Setting up the text views
+        voltage_display = findViewById(R.id.display_voltage);
+        impedance_display = findViewById(R.id.display_impedance);
+
+        //Debug mode
+        if(DEBUG_MODE){
+            try {
+                //graph_in = new FileInputStream(new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/HMSOFTCORTISOL/testRead.txt"));
+                graph_raw_out = new FileOutputStream(new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/HMSOFTCORTISOL/raw.txt"));
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     @Override
@@ -176,8 +231,15 @@ public class MainActivity extends AppCompatActivity {
         if(!isExternalStorageWritable())
             return; //Can't read
         File readDir = new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/HMSOFTCORTISOL/SETTINGS");
-        if(!readDir.exists())
-            readDir.mkdir();
+        Log.i(TAG,readDir.getAbsolutePath());
+        if(!readDir.exists()) {
+            //Create parent first
+            File parent = new File (Environment.getExternalStorageDirectory().getAbsolutePath() + "/HMSOFTCORTISOL");
+            if (parent.mkdir() && readDir.mkdir())
+                Log.i(TAG, "Created a new directory for app");
+            else
+                Log.i(TAG, "Unable to make new directory for app");
+        }
         File settings = new File(readDir,"settings.txt");
         if(!settings.exists()){ //If settings file does not exist, create it with default address
             try {
@@ -198,7 +260,8 @@ public class MainActivity extends AppCompatActivity {
                 boolean record = false;
                 int charNum;
                 while((charNum = is.read()) != -1){ //While there are things to read, only record address
-                    if((char)charNum != ' ' && record)
+                    char charChar = (char)charNum;
+                    if((charChar != ' ' && charChar != '\n' && charChar != '\t') && record)
                         address += (char)charNum;
                     if((char)charNum == ':')
                         record = true;
@@ -206,6 +269,7 @@ public class MainActivity extends AppCompatActivity {
                         record = false;
                 }
                 HMSoftAddress = address;
+                Log.i(TAG, "HMSOFT recorded address:" +  HMSoftAddress + "|\n");
                 is.close();
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
@@ -333,6 +397,9 @@ public class MainActivity extends AppCompatActivity {
         return intentFilter;
     }
 
+    String temp_Inc;
+    double time_since_start;
+    int temp_x = 0;
     private final BroadcastReceiver mGattUpdateReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) { //When it receives something from the device
@@ -350,20 +417,114 @@ public class MainActivity extends AppCompatActivity {
             } else if (BluetoothLeService.ACTION_DATA_AVAILABLE.equals(action)) {
                 //Read current
                 String returnedVal = intent.getStringExtra(BluetoothLeService.EXTRA_DATA);
-                Log.i(TAG,returnedVal);
+                if(DEBUG_MODE) {
+                    try {
+                        graph_raw_out.write(returnedVal.getBytes());
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+                //Log.i(TAG,returnedVal);
                 if(!isRecording) { //Create the output file and file stream
-                    outFile = createFile();
+                    //Wait until we hit a normal recording
+                    if(returnedVal.indexOf('?') == -1)
+                        return;
+                    returnedVal = returnedVal.split("\\?",2)[1];
+                    File[] pair = createFileFFTPair();
+                    outFile = pair[0];
+                    outFile_fft = pair[1];
                     isRecording = true;
+                    flagIgnoreTitle = true;
                     try {
                         outStream = new FileOutputStream(outFile);
                     } catch (FileNotFoundException e) {
                         e.printStackTrace();
                     }
+                    time_since_start = SystemClock.elapsedRealtime(); //Starting time
                 }
 
-                //TODO: Write the fft in a new column in the same file
-                if(returnedVal.equals("resUnfiltered FFT, resFiltered FFT")){}
+                //Activate FFT recording, to record fft in a separate file
+                if(!flagFFTRecording && returnedVal.indexOf('!') != -1){
+                    //get the last part before ! and append to file
+                    String[] strs = returnedVal.split("!",2);
+                    try {
+                        temp_Inc += strs[0];
+                        //String temp_message = "Switching to FFT..\n";
+                        outStream.write(strs[0].getBytes());
+                        //outStream.write(temp_message.getBytes());
+                        outStream.close();
+                        //Now start writing on the fft_file
+                        outStream = new FileOutputStream(outFile_fft,true);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    returnedVal = strs[1];
+                    flagFFTRecording = true;
+                    flagIgnoreTitle = true;
+                }
+
+                //Deactivate FFt recording, and go back to the previous file that was writing
+                if(flagFFTRecording && returnedVal.indexOf('?') != -1){
+                    //get the last part before ? and append to file
+                    String[] strs = returnedVal.split("\\?",2);
+                    try {
+                        outStream.write(strs[0].getBytes());
+                        outStream.close();
+                        //Now start writing on the fft_file
+                        outStream = new FileOutputStream(outFile,true);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    returnedVal = strs[1];
+                    flagFFTRecording = false;
+                    flagIgnoreTitle = true;
+                }
+
+                //Ignore the rest of the line
+                if(flagIgnoreTitle && returnedVal.indexOf('\n') != -1){
+                    //Split up into two
+                    returnedVal = returnedVal.split("\\n",2)[1];
+                    flagIgnoreTitle = false;
+                }
+
+
                 //Write to the output file
+                if(flagIgnoreTitle)
+                    return;
+
+                //Save a temporary string of the current line
+                if(!flagFFTRecording && returnedVal.indexOf('\n') != -1){
+                    String[] st = returnedVal.split("\\n",2);
+                    temp_Inc += st[0];
+                    String[] vals = temp_Inc.split(",",7);
+                    /*
+                        In Order of this if correct:
+                        Voltage input, voltage out unfiltered, resistance unfiltered, voltage out
+                        filtered, resistance filtered, frequency applied, expected (should be empty)
+                    */
+                    //TODO: Handle cases where the string is not long enough
+                    if(vals.length >= 7) {
+                        Log.i(TAG, "The string is : " + temp_Inc);
+                        double v;
+                        try {
+                            v = Double.parseDouble(vals[4]); //parse the  resistance UF to a double
+                            impedance_display.setText(vals[4]); //View it in the graph
+                            double time = (SystemClock.elapsedRealtime() - time_since_start) / 1000;
+                            series.appendData(new DataPoint(time, v), true, 200);
+
+                            v = Double.parseDouble(vals[1]);
+                            voltage_display.setText(vals[1]);
+                            series_voltage.appendData(new DataPoint(time, v), true, 200);
+                        }
+                        catch(RuntimeException e){
+                            e.printStackTrace();
+                        }
+                    }
+                    temp_Inc = st[1];
+                }
+                else if(!flagFFTRecording)
+                    temp_Inc += returnedVal;
+
                 try {
                     outStream.write(returnedVal.getBytes());
                 } catch (IOException e) {
@@ -375,11 +536,27 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+    //TODO: Separate into separate folders (FFT and Normal)
+    //Creates two files that with the same name except the 2nd element has _fft appended to the end
+    private File[] createFileFFTPair(){
+        File[] pair = new File[2];
+        pair[0] = createFile();
+        pair[1] = createFile(pair[0].getName().substring(0,pair[0].getName().indexOf('.')) + "_fft");
+        return pair;
+    }
     private File createFile(){
-        File dir = new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/HMSOFTCORTISOL");
+        return createFile("","");
+    }
+    private File createFile(String name){
+        return createFile(name,"");
+    }
+    private File createFile(String name, String relativePath){
+        File dir = new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/HMSOFTCORTISOL" + relativePath);
         if(!dir.exists()) //Create directory if it does not exist
             dir.mkdir();
         String title = BluetoothApp.getDateString() + "_" + BluetoothApp.getTimeString();
+        if(!name.equals(""))
+            title = name;
         File outputFile = new File(dir,title + ".txt");
         if(!outputFile.exists()){
             try {
@@ -390,6 +567,16 @@ public class MainActivity extends AppCompatActivity {
         }
         return outputFile;
     }
+
+    //Counts the number of occurrences of a character
+    private int countChar(String str, char c){
+        int total = str.length(), count_total = 0;
+        for(int i = 0; i < total; i++)
+            if(str.charAt(i) == c)
+                count_total++;
+        return count_total;
+    }
+
 
     //Checks to see if it is the data from the board we need (current)
     private void checkIfCharacteristic(List<BluetoothGattService> gattServices){
@@ -467,4 +654,40 @@ public class MainActivity extends AppCompatActivity {
             mBluetoothLeService = null;
         }
     };
+
+    //DEBUG FUNCTIONS
+    public void Debug_Graph_Vals(View ve) {
+        if(!DEBUG_MODE)
+            return;
+//        int c;
+//        String s = "";
+//        try {
+//            while ((c = graph_in.read()) != -1) {
+//                s += (char) c;
+//                if ((char) c == '\n'){
+//                    if(s.indexOf('v') != -1){
+//                        return;
+//                    }
+//                    break;
+//                }
+//            }
+//            Log.i(TAG, "current string extracted = : " + s);
+//            String[] vals = s.split(",",7);
+//                    /*
+//                        In Order of this if correct:
+//                        Voltage input, voltage out unfiltered, resistance unfiltered, voltage out
+//                        filtered, resistance filtered, frequency applied, expected (should be empty)
+//                    */
+//            double v = Double.parseDouble(vals[4]); //parse the  resistance UF to a double
+//            impedance_display.setText(vals[4]); //View it in the graph
+//            series.appendData(new DataPoint(temp_x,v),true,200);
+//
+//            v = Double.parseDouble(vals[1]);
+//            voltage_display.setText(vals[1]);
+//            series_voltage.appendData(new DataPoint(temp_x++,v),true,200);
+//        } catch(IOException e){
+//            e.printStackTrace();
+//        }
+
+    }
 }
